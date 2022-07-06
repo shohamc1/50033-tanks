@@ -8,11 +8,13 @@ public class TankShooting : MonoBehaviour
     public Transform m_FireTransform;
     public Slider m_AimSlider;
     public AudioSource m_ShootingAudio;
+    public AudioClip m_NotReadyAudio;
     public AudioClip m_ChargingClip;
     public AudioClip m_FireClip;
     public float m_MinLaunchForce = 15f;
     public float m_MaxLaunchForce = 30f;
     public float m_MaxChargeTime = 0.75f;
+    public bool isPlayer;
 
     private string m_FireButton;
     private float m_CurrentLaunchForce;
@@ -70,14 +72,20 @@ public class TankShooting : MonoBehaviour
         nextFireTime = Time.time + fireRate;
         m_Fired = true;
 
-        Rigidbody shellInstance =
-            Instantiate(m_Shell, m_FireTransform.position, m_FireTransform.rotation) as Rigidbody;
+        var shell = Instantiate(m_Shell, m_FireTransform.position, m_FireTransform.rotation);
+        var shellInstance = shell.GetComponent<Rigidbody>();
         shellInstance.velocity = m_CurrentLaunchForce * m_FireTransform.forward;
+
+        if (isPlayer)
+        {
+            var shellExplosion = shell.GetComponent<ShellExplosion>();
+            shellExplosion.isFromPlayer = true;
+        }
 
         m_ShootingAudio.clip = m_FireClip;
         m_ShootingAudio.Play();
 
         m_CurrentLaunchForce = m_MinLaunchForce;
     }
-    
+
 }

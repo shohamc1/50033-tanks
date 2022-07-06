@@ -8,24 +8,39 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    public int m_NumRoundsToWin = 5;            
-    public float m_StartDelay = 3f;             
-    public float m_EndDelay = 3f;               
-    public CameraControl m_CameraControl;       
-    public Text m_MessageText;                  
+    public int m_NumRoundsToWin = 5;
+    public float m_StartDelay = 3f;
+    public float m_EndDelay = 3f;
+    public CameraControl m_CameraControl;
+    public Text m_MessageText;
     public GameObject[] m_TankPrefabs;
-    public TankManager[] m_Tanks;               
+    public TankManager[] m_Tanks;
     public List<Transform> wayPointsForAI;
 
-    private int m_RoundNumber;                  
-    private WaitForSeconds m_StartWait;         
-    private WaitForSeconds m_EndWait;           
-    private TankManager m_RoundWinner;          
-    private TankManager m_GameWinner;           
+    private int m_RoundNumber;
+    private WaitForSeconds m_StartWait;
+    private WaitForSeconds m_EndWait;
+    private TankManager m_RoundWinner;
+    private TankManager m_GameWinner;
+    public GameConstants gameConstants;
+    public GameObject healthPowerup;
+    public GameObject speedPowerup;
+    public Transform healthPowerupLocation;
+    public Transform speedPowerupLocation;
+    private bool hasPowerupSpawned;
+    private int powerupCounter = 0;
+
+    public delegate void gameEvent();
+    public static event gameEvent OnRoundEnd;
+    private int alert;
+    private AudioSource audiosource;
+    public AudioClip undetectedClip;
+    public AudioClip detectedClip;
 
 
     private void Start()
     {
+        audiosource = GetComponent<AudioSource>();
         m_StartWait = new WaitForSeconds(m_StartDelay);
         m_EndWait = new WaitForSeconds(m_EndDelay);
 
@@ -33,6 +48,42 @@ public class GameManager : MonoBehaviour
         SetCameraTargets();
 
         StartCoroutine(GameLoop());
+
+        MenuController.RoundSkip += FinishRound;
+        SpeedPowerup.PowerupReset += ResetPowerup;
+        HealthPowerup.PowerupReset += ResetPowerup;
+        StateController.TurnOnAlarm += PlayAlarm;
+        StateController.TurnOffAlarm += StopAlarm;
+    }
+
+    private void ResetPowerup()
+    {
+        hasPowerupSpawned = false;
+        powerupCounter++;
+    }
+
+    private void PlayAlarm()
+    {
+        alert++;
+        Debug.Log(alert);
+        if (alert - 1 == 0)
+        {
+            Debug.Log("starting alarm");
+            audiosource.clip = detectedClip;
+            audiosource.Play();
+        }
+    }
+
+    private void StopAlarm()
+    {
+        alert--;
+        Debug.Log(alert);
+        if (alert == 0)
+        {
+            Debug.Log("Stopping alarm");
+            audiosource.clip = undetectedClip;
+            audiosource.Play();
+        }
     }
 
 
@@ -49,6 +100,15 @@ public class GameManager : MonoBehaviour
                 Instantiate(m_TankPrefabs[i], m_Tanks[i].m_SpawnPoint.position, m_Tanks[i].m_SpawnPoint.rotation) as GameObject;
             m_Tanks[i].m_PlayerNumber = i + 1;
             m_Tanks[i].SetupAI(wayPointsForAI);
+        }
+    }
+
+    public void FinishRound()
+    {
+        foreach (TankManager tank in m_Tanks)
+        {
+            if (!OneTankLeft())
+                tank.m_Instance.SetActive(false);
         }
     }
 
@@ -107,11 +167,17 @@ public class GameManager : MonoBehaviour
 
         m_RoundWinner = GetRoundWinner();
         if (m_RoundWinner != null) m_RoundWinner.m_Wins++;
+        if (m_RoundWinner.m_Instance.CompareTag("Player"))
+            gameConstants.roundNumber++;
 
         m_GameWinner = GetGameWinner();
 
         string message = EndMessage();
         m_MessageText.text = message;
+
+        OnRoundEnd();
+        Time.timeScale = 1.0f;
+        alert = 0;
 
         yield return m_EndWait;
     }
@@ -119,6 +185,10 @@ public class GameManager : MonoBehaviour
 
     private bool OneTankLeft()
     {
+        // should spawn powerup?
+        if (Random.Range(0, 1000) == 1 && !hasPowerupSpawned)
+            SpawnPowerup();
+
         int numTanksLeft = 0;
 
         for (int i = 0; i < m_Tanks.Length; i++)
@@ -127,6 +197,19 @@ public class GameManager : MonoBehaviour
         }
 
         return numTanksLeft <= 1;
+    }
+
+    private void SpawnPowerup()
+    {
+        hasPowerupSpawned = true;
+        if (powerupCounter % 2 == 1)
+        {
+            Instantiate(speedPowerup, speedPowerupLocation.position, speedPowerupLocation.rotation);
+        }
+        else
+        {
+            Instantiate(healthPowerup, healthPowerupLocation.position, healthPowerupLocation.rotation);
+        }
     }
 
     private TankManager GetRoundWinner()

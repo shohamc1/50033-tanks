@@ -6,13 +6,13 @@ public class ChaseAction : Action
 
     public override void Act(StateController controller)
     {
-		Chase(controller);
+        Chase(controller);
     }
 
-	private void Chase(StateController controller)
-	{
-		controller.navMeshAgent.destination = controller.chaseTarget.position;
-		controller.navMeshAgent.isStopped = false;
-	}
+    private void Chase(StateController controller)
+    {
+        controller.navMeshAgent.destination = controller.chaseTarget.position;
+        controller.navMeshAgent.isStopped = false;
+    }
 
 }
