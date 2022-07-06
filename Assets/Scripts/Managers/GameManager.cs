@@ -177,7 +177,10 @@ public class GameManager : MonoBehaviour
 
         OnRoundEnd();
         Time.timeScale = 1.0f;
+
         alert = 0;
+        audiosource.clip = undetectedClip;
+        audiosource.Play();
 
         yield return m_EndWait;
     }
